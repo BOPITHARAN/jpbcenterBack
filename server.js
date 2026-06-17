@@ -2,11 +2,13 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swagger/swagger");
 
 const app = express();
 
 // =======================
-// ENV CHECK (SAFE)
+// ENV CHECK
 // =======================
 console.log("ENV CHECK:", {
   PORT: process.env.PORT,
@@ -22,7 +24,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://localhost:5174",
-      "https://jobcente.netlify.app/",
+      "http://localhost:5175",
     ],
     credentials: true,
   })
@@ -40,23 +42,44 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads"));
 
 // =======================
+// SWAGGER UI  →  http://localhost:5000/api-docs
+// =======================
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customSiteTitle: "JobCenter+ API Docs",
+    swaggerOptions: {
+      persistAuthorization: true, // keep JWT between page refreshes
+    },
+  })
+);
+
+// serve the raw JSON spec for external tools
+app.get("/api-docs.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerSpec);
+});
+
+// =======================
 // ROUTES
 // =======================
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/jobs", require("./routes/jobRoutes"));
-app.use("/api/applications", require("./routes/applicationRoutes"));
-app.use("/api/saved-jobs", require("./routes/savedJobRoutes"));
-app.use("/api/contact", require("./routes/contactRoutes"));
-app.use("/api/newsletter", require("./routes/newsletterRoutes"));
-app.use("/api/dashboard", require("./routes/dashboardRoutes"));
-app.use("/api/ads", require("./routes/adRoutes"));
-app.use("/api/companies", require("./routes/companyRoutes"));
+app.use("/api/auth",        require("./routes/authRoutes"));
+app.use("/api/jobs",        require("./routes/jobRoutes"));
+app.use("/api/applications",require("./routes/applicationRoutes"));
+app.use("/api/saved-jobs",  require("./routes/savedJobRoutes"));
+app.use("/api/contact",     require("./routes/contactRoutes"));
+app.use("/api/newsletter",  require("./routes/newsletterRoutes"));
+app.use("/api/dashboard",   require("./routes/dashboardRoutes"));
+app.use("/api/ads",         require("./routes/adRoutes"));
+app.use("/api/companies",   require("./routes/companyRoutes"));
 
 // =======================
 // ROOT ROUTE
 // =======================
 app.get("/", (req, res) => {
-  res.send("JobCenter+ Backend Running 🚀");
+  res.send("JobCenter+ Backend Running 🚀  — Docs: /api-docs");
 });
 
 // =======================
@@ -70,5 +93,6 @@ app.use(require("./middleware/errorMiddleware"));
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Server Running on ${PORT}`);
+  console.log(`Server Running on http://localhost:${PORT}`);
+  console.log(`Swagger Docs  → http://localhost:${PORT}/api-docs`);
 });
