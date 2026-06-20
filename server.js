@@ -6,7 +6,7 @@ const swaggerSpec = require("./swagger/swagger");
 
 const app = express();
 
-// CORS Configuration - உங்கள் Netlify URL-ல் 'r' உள்ள மற்றும் இல்லாத பெயர்களைச் சேர்த்துள்ளேன்
+// CORS Configuration - அனைத்துச் சூழலிலும் வேலை செய்யும் வகையில் மேம்படுத்தப்பட்டுள்ளது
 const allowedOrigins = [
   "http://localhost:5173", 
   "https://jobcenter.netlify.app",
@@ -15,15 +15,15 @@ const allowedOrigins = [
 
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
-        
-        if (allowedOrigins.indexOf(origin) !== -1) {
+        // !origin: Postman அல்லது மொபைல் ஆப் போன்ற கோரிக்கைகளை அனுமதிக்கும்
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
-            callback(new Error("Not allowed by CORS"));
+            callback(new Error("CORS Policy Blocked This Request"));
         }
     },
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
 }));
 
