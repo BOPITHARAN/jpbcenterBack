@@ -6,39 +6,37 @@ const swaggerSpec = require("./swagger/swagger");
 
 const app = express();
 
-// =======================
-// CORS CONFIG (Fixed for withCredentials)
-// =======================
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "https://jobcente.netlify.app" // உங்கள் Netlify URL
-];
-
-app.use(
-  cors({
+// CORS Configuration
+const allowedOrigins = ["http://localhost:5173", "https://jobcente.netlify.app"];
+app.use(cors({
     origin: function (origin, callback) {
-      // Postman அல்லது மொபைல் ஆப்ஸ்களுக்காக origin இல்லாத கோரிக்கைகளை அனுமதிக்கிறது
-      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
     },
     methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true, // இது true ஆக இருக்கும்போது origin '*' கொடுக்கக்கூடாது
-  })
-);
+    credentials: true,
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads"));
 
-// ROUTES (சுருக்கமாக)
+// ROUTES
 app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/contact", require("./routes/contactRoutes"));
+app.use("/api/jobs", require("./routes/jobRoutes"));
+app.use("/api/dashboard", require("./routes/dashboardRoutes"));
+app.use("/api/applications", require("./routes/applicationRoutes"));
+app.use("/api/ads", require("./routes/adRoutes"));
 app.use("/api/companies", require("./routes/companyRoutes"));
-// ... மற்ற அனைத்து routes
+app.use("/api/newsletter", require("./routes/newsletterRoutes"));
+app.use("/api/contact", require("./routes/contactRoutes"));
+app.use("/api/saved-jobs", require("./routes/savedJobRoutes"));
+
+// Swagger
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get("/", (req, res) => res.json({ message: "JobCenter+ Backend Running 🚀" }));
 
