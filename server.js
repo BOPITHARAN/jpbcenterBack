@@ -6,11 +6,18 @@ const swaggerSpec = require("./swagger/swagger");
 
 const app = express();
 
-// CORS Configuration
-const allowedOrigins = ["http://localhost:5173", "https://jobcente.netlify.app"];
+// CORS Configuration - உங்கள் Netlify URL சரியாக உள்ளதா என உறுதி செய்யவும்
+const allowedOrigins = [
+  "http://localhost:5173", 
+  "https://jobcenter.netlify.app" // இங்கே 'r' உள்ளதை உறுதி செய்யவும்
+];
+
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        // allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
             callback(new Error("Not allowed by CORS"));
@@ -35,11 +42,12 @@ app.use("/api/newsletter", require("./routes/newsletterRoutes"));
 app.use("/api/contact", require("./routes/contactRoutes"));
 app.use("/api/saved-jobs", require("./routes/savedJobRoutes"));
 
-// Swagger
+// Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get("/", (req, res) => res.json({ message: "JobCenter+ Backend Running 🚀" }));
 
+// Error handling middleware
 app.use(require("./middleware/errorMiddleware"));
 
 const PORT = process.env.PORT || 5000;
