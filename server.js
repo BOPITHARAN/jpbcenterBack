@@ -6,15 +6,15 @@ const swaggerSpec = require("./swagger/swagger");
 
 const app = express();
 
-// CORS Configuration - உங்கள் Netlify URL சரியாக உள்ளதா என உறுதி செய்யவும்
+// CORS Configuration - உங்கள் Netlify URL-ல் 'r' உள்ள மற்றும் இல்லாத பெயர்களைச் சேர்த்துள்ளேன்
 const allowedOrigins = [
   "http://localhost:5173", 
-  "https://jobcenter.netlify.app" // இங்கே 'r' உள்ளதை உறுதி செய்யவும்
+  "https://jobcenter.netlify.app",
+  "https://jobcente.netlify.app"
 ];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
         
         if (allowedOrigins.indexOf(origin) !== -1) {
