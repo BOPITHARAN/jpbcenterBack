@@ -13,6 +13,10 @@ const options = {
         url: "http://localhost:5000",
         description: "Local Development Server",
       },
+      {
+        url: "https://jpbcenterback-production.up.railway.app",
+        description: "Production Server (Railway)",
+      },
     ],
     components: {
       securitySchemes: {
