@@ -8,47 +8,24 @@ const swaggerSpec = require("./swagger/swagger");
 const app = express();
 
 // =========================
-// CORS CONFIG (SAFE)
+// CORS CONFIG (FIXED & SECURE)
 // =========================
 const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      "http://localhost:5173",
-      "https://jobcente.netlify.app"
-    ];
-
-    // Allow Postman / server-to-server requests
-    if (!origin) return callback(null, true);
-
-    if (
-      allowedOrigins.includes(origin) ||
-      origin.includes("netlify.app")
-    ) {
-      return callback(null, true);
-    }
-
-    // TEMP: allow all (for debugging & Railway fix)
-    return callback(null, true);
-  },
-
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "cache-control",
-    "Cache-Control"
+  origin: [
+    "https://jobcente.netlify.app", 
+    "http://localhost:5173"
   ],
-
-  credentials: true
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cache-Control"],
+  credentials: true,
+  optionsSuccessStatus: 200
 };
 
-// =========================
-// MIDDLEWARE
-// =========================
+// Middleware
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// கவனிக்க: app.options("*") வரியை நீக்கிவிட்டேன் (PathError தவிர்க்க)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use("/uploads", express.static("uploads"));
 
 // =========================
@@ -72,19 +49,14 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // =========================
-// TEST ROUTE
+// TEST & 404 HANDLERS
 // =========================
 app.get("/", (req, res) => {
   res.json({ message: "JobCenter+ Backend Running 🚀" });
 });
 
-// =========================
-// 404 HANDLER
-// =========================
 app.use((req, res) => {
-  res.status(404).json({
-    message: "Route not found"
-  });
+  res.status(404).json({ message: "Route not found" });
 });
 
 // =========================
@@ -96,7 +68,6 @@ app.use(require("./middleware/errorMiddleware"));
 // START SERVER
 // =========================
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server Running on port ${PORT}`);
 });
