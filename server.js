@@ -5,6 +5,7 @@ const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger/swagger");
 
+
 const app = express();
 
 /* =========================
@@ -47,7 +48,8 @@ app.use("/uploads", express.static("uploads"));
 /* =========================
    ROUTES
 ========================= */
-
+app.use("/api/newsletter", require("./routes/newsletterRoutes"));
+app.use("/api/contact", require("./routes/contactRoutes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/jobs", require("./routes/jobRoutes"));
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
