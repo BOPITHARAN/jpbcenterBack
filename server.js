@@ -9,7 +9,7 @@ const app = express();
 // Allowed origins
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://jobcenter.netlify.app",
+  "https://jobcente.netlify.app",
   "https://jobcente.netlify.app"
 ];
 
