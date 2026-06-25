@@ -7,30 +7,47 @@ const swaggerSpec = require("./swagger/swagger");
 
 const app = express();
 
-// =========================
-// CORS CONFIG (FIXED & SECURE)
-// =========================
+/* =========================
+   CORS CONFIG (SAFE)
+========================= */
+
+const allowedOrigins = [
+  "https://jobcente.netlify.app",
+  "http://localhost:5173",
+];
+
 const corsOptions = {
-  origin: [
-    "https://jobcente.netlify.app", 
-    "http://localhost:5173"
-  ],
+  origin: function (origin, callback) {
+    // allow tools like Postman / curl
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS blocked"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "Cache-Control"],
   credentials: true,
-  optionsSuccessStatus: 200
 };
 
-// Middleware
+/* =========================
+   MIDDLEWARE
+========================= */
+
+// ✅ IMPORTANT: DO NOT use app.options("*")
 app.use(cors(corsOptions));
-// கவனிக்க: app.options("*") வரியை நீக்கிவிட்டேன் (PathError தவிர்க்க)
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
 app.use("/uploads", express.static("uploads"));
 
-// =========================
-// ROUTES
-// =========================
+/* =========================
+   ROUTES
+========================= */
+
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/jobs", require("./routes/jobRoutes"));
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
@@ -41,33 +58,40 @@ app.use("/api/newsletter", require("./routes/newsletterRoutes"));
 app.use("/api/contact", require("./routes/contactRoutes"));
 app.use("/api/saved-jobs", require("./routes/savedJobRoutes"));
 
-// =========================
-// SWAGGER (DEV ONLY)
-// =========================
-if (process.env.NODE_ENV !== "production") {
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-}
+/* =========================
+   HEALTH CHECK
+========================= */
 
-// =========================
-// TEST & 404 HANDLERS
-// =========================
 app.get("/", (req, res) => {
-  res.json({ message: "JobCenter+ Backend Running 🚀" });
+  res.json({
+    success: true,
+    message: "JobCenter+ Backend Running 🚀",
+  });
 });
+
+/* =========================
+   404 HANDLER
+========================= */
 
 app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
 });
 
-// =========================
-// ERROR HANDLER
-// =========================
+/* =========================
+   ERROR HANDLER
+========================= */
+
 app.use(require("./middleware/errorMiddleware"));
 
-// =========================
-// START SERVER
-// =========================
+/* =========================
+   START SERVER
+========================= */
+
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server Running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
