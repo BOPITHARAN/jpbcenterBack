@@ -16,9 +16,9 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const createToken = (user) => {
   return jwt.sign(
     {
-      id: user.id,
-      email: user.email,
-      role: user.role || "user",
+      id: user?.id || null,
+      email: user?.email || null,
+      role: user?.role || "user",
     },
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
@@ -56,11 +56,18 @@ exports.register = async (req, res) => {
       });
     }
 
-    // check existing
-    const { data: existing } = await supabase
+    // check existing user
+    const { data: existing, error: existError } = await supabase
       .from("users")
-      .select("*")
+      .select("id")
       .or(`email.eq.${cleanEmail},phone.eq.${cleanPhone}`);
+
+    if (existError) {
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+      });
+    }
 
     if (existing && existing.length > 0) {
       return res.status(400).json({
@@ -94,13 +101,13 @@ exports.register = async (req, res) => {
 
     const token = createToken(data);
 
-    res.json({
+    return res.json({
       success: true,
       token,
       user: data,
     });
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: err.message,
     });
@@ -117,19 +124,26 @@ exports.login = async (req, res) => {
     if (!identifier || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email/Phone required",
+        message: "Required fields missing",
       });
     }
 
     const cleanEmail = identifier.trim().toLowerCase();
     const cleanPhone = identifier.trim();
 
-    const { data: users } = await supabase
+    const { data: users, error } = await supabase
       .from("users")
       .select("*")
       .or(`email.eq.${cleanEmail},phone.eq.${cleanPhone}`);
 
-    if (!users || users.length === 0) {
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: "DB error",
+      });
+    }
+
+    if (!Array.isArray(users) || users.length === 0) {
       return res.status(404).json({
         success: false,
         message: "User not found",
@@ -149,13 +163,19 @@ exports.login = async (req, res) => {
 
     const token = createToken(user);
 
-    res.json({
+    return res.json({
       success: true,
       token,
-      user,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+      },
     });
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: err.message,
     });
@@ -171,10 +191,10 @@ exports.phoneLogin = async (req, res) => {
 
     const cleanPhone = phone?.trim();
 
-    if (!cleanPhone || !/^\d{9,15}$/.test(cleanPhone)) {
+    if (!cleanPhone) {
       return res.status(400).json({
         success: false,
-        message: "Invalid phone",
+        message: "Phone required",
       });
     }
 
@@ -218,13 +238,13 @@ exports.phoneLogin = async (req, res) => {
 
     const token = createToken(data);
 
-    res.json({
+    return res.json({
       success: true,
       token,
       user: data,
     });
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: err.message,
     });
@@ -237,6 +257,13 @@ exports.phoneLogin = async (req, res) => {
 exports.googleLogin = async (req, res) => {
   try {
     const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Google token missing",
+      });
+    }
 
     const ticket = await googleClient.verifyIdToken({
       idToken: token,
@@ -274,13 +301,13 @@ exports.googleLogin = async (req, res) => {
 
     const jwtToken = createToken(user);
 
-    res.json({
+    return res.json({
       success: true,
       token: jwtToken,
       user,
     });
   } catch (err) {
-    res.status(401).json({
+    return res.status(401).json({
       success: false,
       message: "Google login failed",
     });
