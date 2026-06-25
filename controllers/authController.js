@@ -35,35 +35,37 @@ exports.register = async (req, res) => {
     if (!name || !email || !phone || !password) {
       return res.status(400).json({
         success: false,
-        message: "Name, email, phone and password required",
+        message: "All fields required",
       });
     }
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanPhone = phone.trim();
 
-    if (password.length < 6) {
+    if (!/^\d{9,15}$/.test(cleanPhone)) {
       return res.status(400).json({
         success: false,
-        message: "Password minimum 6 characters",
+        message: "Invalid phone format",
       });
     }
 
-    // check existing user
-    const { data: existing, error: existError } = await supabase
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be 6+ characters",
+      });
+    }
+
+    // check existing
+    const { data: existing } = await supabase
       .from("users")
       .select("*")
       .or(`email.eq.${cleanEmail},phone.eq.${cleanPhone}`);
 
-    if (existError) {
-      console.log(existError);
-      return res.status(500).json({ success: false });
-    }
-
     if (existing && existing.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "Email or phone already exists",
+        message: "User already exists",
       });
     }
 
@@ -84,19 +86,20 @@ exports.register = async (req, res) => {
       .single();
 
     if (error || !data) {
-      console.log("REGISTER ERROR:", error);
       return res.status(500).json({
         success: false,
         message: "Registration failed",
       });
     }
 
+    const token = createToken(data);
+
     res.json({
       success: true,
+      token,
       user: data,
     });
   } catch (err) {
-    console.log(err);
     res.status(500).json({
       success: false,
       message: err.message,
@@ -114,22 +117,17 @@ exports.login = async (req, res) => {
     if (!identifier || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email/Phone and password required",
+        message: "Email/Phone required",
       });
     }
 
     const cleanEmail = identifier.trim().toLowerCase();
     const cleanPhone = identifier.trim();
 
-    const { data: users, error } = await supabase
+    const { data: users } = await supabase
       .from("users")
       .select("*")
       .or(`email.eq.${cleanEmail},phone.eq.${cleanPhone}`);
-
-    if (error) {
-      console.log(error);
-      return res.status(500).json({ success: false });
-    }
 
     if (!users || users.length === 0) {
       return res.status(404).json({
@@ -157,7 +155,6 @@ exports.login = async (req, res) => {
       user,
     });
   } catch (err) {
-    console.log(err);
     res.status(500).json({
       success: false,
       message: err.message,
@@ -174,23 +171,17 @@ exports.phoneLogin = async (req, res) => {
 
     const cleanPhone = phone?.trim();
 
-    if (!cleanPhone) {
+    if (!cleanPhone || !/^\d{9,15}$/.test(cleanPhone)) {
       return res.status(400).json({
         success: false,
-        message: "Phone required",
+        message: "Invalid phone",
       });
     }
 
-    // check existing user
-    const { data: users, error: fetchError } = await supabase
+    const { data: users } = await supabase
       .from("users")
       .select("*")
       .eq("phone", cleanPhone);
-
-    if (fetchError) {
-      console.log(fetchError);
-      return res.status(500).json({ success: false });
-    }
 
     if (users && users.length > 0) {
       const user = users[0];
@@ -203,7 +194,6 @@ exports.phoneLogin = async (req, res) => {
       });
     }
 
-    // create new user
     const hashedPassword = await bcrypt.hash("PHONE_USER", 10);
 
     const { data, error } = await supabase
@@ -220,7 +210,6 @@ exports.phoneLogin = async (req, res) => {
       .single();
 
     if (error || !data) {
-      console.log("PHONE INSERT ERROR:", error);
       return res.status(500).json({
         success: false,
         message: "User creation failed",
@@ -235,7 +224,6 @@ exports.phoneLogin = async (req, res) => {
       user: data,
     });
   } catch (err) {
-    console.log(err);
     res.status(500).json({
       success: false,
       message: err.message,
@@ -258,41 +246,28 @@ exports.googleLogin = async (req, res) => {
     const payload = ticket.getPayload();
     const email = payload.email.toLowerCase();
 
-    const { data: users, error } = await supabase
+    const { data: users } = await supabase
       .from("users")
       .select("*")
       .eq("email", email);
-
-    if (error) {
-      console.log(error);
-      return res.status(500).json({ success: false });
-    }
 
     let user;
 
     if (users && users.length > 0) {
       user = users[0];
     } else {
-      const { data, error: insertError } = await supabase
+      const { data } = await supabase
         .from("users")
         .insert([
           {
             name: payload.name,
             email,
-            password: "google",
+            password: "OAUTH_USER",
             role: "user",
           },
         ])
         .select()
         .single();
-
-      if (insertError || !data) {
-        console.log(insertError);
-        return res.status(500).json({
-          success: false,
-          message: "Google user create failed",
-        });
-      }
 
       user = data;
     }
@@ -305,7 +280,6 @@ exports.googleLogin = async (req, res) => {
       user,
     });
   } catch (err) {
-    console.log(err);
     res.status(401).json({
       success: false,
       message: "Google login failed",
