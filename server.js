@@ -9,7 +9,6 @@ const app = express();
 // Allowed origins
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://jobcente.netlify.app",
   "https://jobcente.netlify.app"
 ];
 
@@ -32,9 +31,14 @@ const corsOptions = {
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"]
 };
 
+// CORS Middleware
 app.use(cors(corsOptions));
+
+// 🚀 Pre-flight request handling (IMPORTANT for CORS)
+app.options('*', cors(corsOptions));
 
 // Middleware
 app.use(express.json());
