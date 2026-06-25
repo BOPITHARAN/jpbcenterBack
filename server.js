@@ -12,35 +12,24 @@ const allowedOrigins = [
   "https://jobcente.netlify.app"
 ];
 
-// CORS (Production safe + debugging friendly)
+// CORS Configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    // allow mobile apps / postman / server-to-server
-    if (!origin) return callback(null, true);
-
-    // allow known origins
-    if (
-      allowedOrigins.includes(origin) ||
-      origin.endsWith(".netlify.app")
-    ) {
-      return callback(null, true);
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".netlify.app")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
     }
-
-    // ❗ for debugging (prevents Network Error)
-    return callback(null, true);
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization"]
 };
 
-// CORS Middleware
+// 1. CORS Middleware
 app.use(cors(corsOptions));
 
-// 🚀 Pre-flight request handling (IMPORTANT for CORS)
-app.options('*', cors(corsOptions));
-
-// Middleware
+// 2. Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads"));
