@@ -10,15 +10,12 @@ const supabase = createClient(
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// =====================
-// TOKEN
-// =====================
 const createToken = (user) => {
   return jwt.sign(
     {
-      id: user?.id || null,
-      email: user?.email || null,
-      role: user?.role || "user",
+      id: user.id,
+      email: user.email,
+      role: user.role || "user",
     },
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
@@ -35,79 +32,58 @@ exports.register = async (req, res) => {
     if (!name || !email || !phone || !password) {
       return res.status(400).json({
         success: false,
-        message: "All fields required",
+        message: "Name, email, phone and password required",
       });
     }
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanPhone = phone.trim();
 
-    if (!/^\d{9,15}$/.test(cleanPhone)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid phone format",
-      });
-    }
-
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
-        message: "Password must be 6+ characters",
+        message: "Password minimum 6 characters",
       });
     }
 
-    // check existing user
-    const { data: existing, error: existError } = await supabase
+    // check user
+    const { data: existing } = await supabase
       .from("users")
-      .select("id")
+      .select("*")
       .or(`email.eq.${cleanEmail},phone.eq.${cleanPhone}`);
-
-    if (existError) {
-      return res.status(500).json({
-        success: false,
-        message: "Database error",
-      });
-    }
 
     if (existing && existing.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "User already exists",
+        message: "Email or phone already exists",
       });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const { data, error } = await supabase
-      .from("users")
-      .insert([
-        {
-          name: name.trim(),
-          email: cleanEmail,
-          phone: cleanPhone,
-          password: hashedPassword,
-          role: "user",
-        },
-      ])
-      .select()
-      .single();
+    const { error } = await supabase.from("users").insert([
+      {
+        name: name.trim(),
+        email: cleanEmail,
+        phone: cleanPhone,
+        password: hashedPassword,
+        role: "user",
+      },
+    ]);
 
-    if (error || !data) {
+    if (error) {
       return res.status(500).json({
         success: false,
-        message: "Registration failed",
+        message: error.message,
       });
     }
 
-    const token = createToken(data);
-
-    return res.json({
+    res.json({
       success: true,
-      token,
-      user: data,
+      message: "Registration successful",
     });
   } catch (err) {
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: err.message,
     });
@@ -124,26 +100,19 @@ exports.login = async (req, res) => {
     if (!identifier || !password) {
       return res.status(400).json({
         success: false,
-        message: "Required fields missing",
+        message: "Email/Phone and password required",
       });
     }
 
     const cleanEmail = identifier.trim().toLowerCase();
     const cleanPhone = identifier.trim();
 
-    const { data: users, error } = await supabase
+    const { data: users } = await supabase
       .from("users")
       .select("*")
       .or(`email.eq.${cleanEmail},phone.eq.${cleanPhone}`);
 
-    if (error) {
-      return res.status(500).json({
-        success: false,
-        message: "DB error",
-      });
-    }
-
-    if (!Array.isArray(users) || users.length === 0) {
+    if (!users || users.length === 0) {
       return res.status(404).json({
         success: false,
         message: "User not found",
@@ -163,7 +132,7 @@ exports.login = async (req, res) => {
 
     const token = createToken(user);
 
-    return res.json({
+    res.json({
       success: true,
       token,
       user: {
@@ -175,7 +144,7 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: err.message,
     });
@@ -190,13 +159,6 @@ exports.phoneLogin = async (req, res) => {
     const { phone } = req.body;
 
     const cleanPhone = phone?.trim();
-
-    if (!cleanPhone) {
-      return res.status(400).json({
-        success: false,
-        message: "Phone required",
-      });
-    }
 
     const { data: users } = await supabase
       .from("users")
@@ -229,22 +191,15 @@ exports.phoneLogin = async (req, res) => {
       .select()
       .single();
 
-    if (error || !data) {
-      return res.status(500).json({
-        success: false,
-        message: "User creation failed",
-      });
-    }
-
     const token = createToken(data);
 
-    return res.json({
+    res.json({
       success: true,
       token,
       user: data,
     });
   } catch (err) {
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: err.message,
     });
@@ -257,13 +212,6 @@ exports.phoneLogin = async (req, res) => {
 exports.googleLogin = async (req, res) => {
   try {
     const { token } = req.body;
-
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: "Google token missing",
-      });
-    }
 
     const ticket = await googleClient.verifyIdToken({
       idToken: token,
@@ -289,7 +237,7 @@ exports.googleLogin = async (req, res) => {
           {
             name: payload.name,
             email,
-            password: "OAUTH_USER",
+            password: "google",
             role: "user",
           },
         ])
@@ -301,13 +249,13 @@ exports.googleLogin = async (req, res) => {
 
     const jwtToken = createToken(user);
 
-    return res.json({
+    res.json({
       success: true,
       token: jwtToken,
       user,
     });
   } catch (err) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       message: "Google login failed",
     });
