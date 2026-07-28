@@ -5,39 +5,49 @@ const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger/swagger");
 
-
 const app = express();
 
 /* =========================
-   CORS CONFIG (SAFE)
+   CORS CONFIG
 ========================= */
 
 const allowedOrigins = [
   "https://jobcente.netlify.app",
+  "https://www.jobcente.netlify.app",
   "http://localhost:5173",
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // allow tools like Postman / curl
-    if (!origin) return callback(null, true);
+    console.log("Origin:", origin);
+
+    // Allow Postman / Mobile Apps / Curl
+    if (!origin) {
+      return callback(null, true);
+    }
 
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS blocked"));
+      return callback(null, true);
     }
+
+    console.log("Blocked Origin:", origin);
+    return callback(new Error("CORS blocked"));
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "Cache-Control"],
+
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+
+  allowedHeaders: [
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Authorization",
+    "Cache-Control",
+  ],
+
   credentials: true,
 };
 
-/* =========================
-   MIDDLEWARE
-========================= */
-
-// ✅ IMPORTANT: DO NOT use app.options("*")
 app.use(cors(corsOptions));
 
 app.use(express.json({ limit: "10mb" }));
@@ -46,8 +56,15 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/uploads", express.static("uploads"));
 
 /* =========================
+   SWAGGER
+========================= */
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+/* =========================
    ROUTES
 ========================= */
+
 app.use("/api/newsletter", require("./routes/newsletterRoutes"));
 app.use("/api/contact", require("./routes/contactRoutes"));
 app.use("/api/auth", require("./routes/authRoutes"));
@@ -56,8 +73,6 @@ app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 app.use("/api/applications", require("./routes/applicationRoutes"));
 app.use("/api/ads", require("./routes/adRoutes"));
 app.use("/api/companies", require("./routes/companyRoutes"));
-app.use("/api/newsletter", require("./routes/newsletterRoutes"));
-app.use("/api/contact", require("./routes/contactRoutes"));
 app.use("/api/saved-jobs", require("./routes/savedJobRoutes"));
 
 /* =========================
@@ -65,7 +80,7 @@ app.use("/api/saved-jobs", require("./routes/savedJobRoutes"));
 ========================= */
 
 app.get("/", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
     message: "JobCenter+ Backend Running 🚀",
   });
@@ -96,4 +111,5 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log("Allowed Origins:", allowedOrigins);
 });
